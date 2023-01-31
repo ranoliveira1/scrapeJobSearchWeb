@@ -1,0 +1,126 @@
+# SEARCH FOR JOBS ON APPLY4U WEBPAGE #
+# THIS PAGE HAS THE PECULIARITY TO SHOW RESULTS THAT IT SOUGHT IN OTHER WEBS THROUGH JAVA.
+# THE CODE BELOW CAN'T BRING THESE RESULTS.
+print('\n' + '\033[1;34m' + '  RUNNING SCRIPT FOR SEARCH FOR JOBS ON APPLY4U WEBPAGE  '.center(100, '#') + '\n\n')
+
+
+
+# LIBRARIES NECESSARIES. SOME OF THEM REQUIRE BEING INSTALLED.
+
+import requests                 #used to get the url and store its content in a variable.
+from bs4 import BeautifulSoup   #used to parser the url content.
+from datetime import datetime   #used to register in dataset the date of the scrape (optional).
+from time import sleep          #used to set a waiting time to prevent the target url from blocking our IP.
+from random import randint      #used to set a waiting time to prevent the target url from blocking our IP.
+import pandas as pd             #used to store the query in a dataframe and export it to Excel
+import os.path                  #used to check if there is the directory where we're going to store the files
+from os import mkdir            #used to create the directory where we're going to store the files
+
+
+
+# THESE VARIABLE/LIST BELLOW REFER TO THE JOB AND CITY YOU'RE LOOKING FOR.
+# IF DESIRABLE YOU CAN CREATE A LINE ASKING QUE USER DO INSERT THE 'job' AND THE 'local'.
+    # job = str(input('Please informe the job')
+# IT'S IMPORT TO MENTION THAT WE'RE USING INDEED FROM UK.
+# YOU CAN CHANGE IT BY CHANGE THE 'uk' FOR ANOTHER COUNTRY IN THE URL VARIABLES BELLOW.
+# IN THIS CODE, THE JOBS ARE IN A LIST BECAUSE WE WANT TO SEARCH SEVERAL JOBS AT ONCE.
+# IF THE JOB TITLE IS A COMPOUND NAME, YOU HAVE TO SEPARATE IT WITH - SIGNAL. EX.: 'business-analyst'
+# ALL THE INFORMATION WILL BE STORED IN A LIST, WHICH WILL ALLOW TO TRANSPORT TO A DATAFRAME
+
+lista = list()
+local = 'london'
+jobs = ['portuguese', 'assistant', 'analyst']
+for job in jobs:
+    print('\033[1;34m' + 'SEARCHING ADVERTS FOR POSITION: '+job.upper()+'\n')
+
+
+
+    # THIS SECOND ITERATOR IS USED TO GO THROUGH A NUMBER OF PAGES PREVIOUSLY DELIMITED.
+    # WE DIDN'T FIND OUT A WAY TO SCRAPE THE TAG RELATIVE TO THE PAGE SELECTOR, IT LOOKS LIKE IT'S INFINITE.
+
+    for count in range(1, 300):
+
+
+
+        # IT'S IMPORTANT TO SET A TIMEOUT FOR REQUESTS, OTHERWAY IT'LL BE RUNNING INDEFINITELY EVEN WITHOUT RESPONSE FROM THE SERVER.
+        # IN THIS STEP, WE ARE STORING THE PAGE IN THE VARIABLE "page". AFTER THAT, WE'LL ANALYSE IT WITH BeautifulSoup AND THE RESULT OF IT WILL BE STORE IN THE "scraped" VARIABLE.
+
+        try:
+            page = requests.get('https://www.apply4u.co.uk/jobs/' + job + '-jobs-in-' + local + '?radius=20&pagesize=100&page=' + str(count), timeout=10)
+        except:
+            break
+
+        scraped = BeautifulSoup(page.content, 'html.parser')
+
+
+
+        # THIS THIRD ITERATOR WILL GET THE INFORMATION AVAILABLE IN THE PAGE.
+        # WE CREATED THE VARIABLE 'web' TO MAKE IT CLICKABLE IN EXCEL. THIS HAS THE WEBPAGE OF THE JOB.
+
+        for x in scraped.find_all('div', class_='row m-0'):
+            try:
+                position = x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0 JobTitle').a.h2.text.strip()
+            except:
+                position = 'no data'
+            try:
+                if x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0 JobTitle').a.get('href')[0] == 'h':
+                    webx = x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0 JobTitle').a.get('href').strip()
+                    if len(webx) > 255:
+                        web = ''
+                    else:
+                        web = '=HYPERLINK("' + webx + '")'
+                else:
+                    webx = 'https://www.apply4u.co.uk' + x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0 JobTitle').a.get('href').strip()
+                    if len(webx) > 255:
+                        web = ''
+                    else:
+                        web = '=HYPERLINK("' + webx + '")'
+            except:
+                webx = 'no data'
+                web = 'no data'
+            try:
+                company = x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0').p.a.text.strip()
+            except:
+                company = 'no data'
+            try:
+                salary = x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0').find_next_sibling('div', class_='col-md-12 col-sm-12 col-xs-12 p-0').text.strip()
+            except:
+                salary = 'no data'
+            try:
+                limit = x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0').p.text.index('\n')
+                post_date = x.find('div', class_='col-md-12 col-sm-12 col-xs-12 p-0').p.text[0:limit].strip()
+            except:
+                post_date = 'no data'
+            try:
+                position_search = job
+            except:
+                position_search = 'no data'
+            scrape_date = datetime.now()
+            lista.append([position_search, position, company, salary, web, webx, post_date, scrape_date])
+
+
+
+        # TO PREVENT INDEED TO BLOCK OUT IP, ONCE WE'RE SENDING SEVERAL REQUESTS TO ITS SERVER,
+        # WE SET A RANDOM WAITING TIME IN THE RANGE OF 2 TO 5 SECONDS.
+
+        sleep(randint(2, 5))
+
+
+
+# WE USE PANDAS TO TRANSFORM THE LIST INTO A DATAFRAME.
+# JUST IN CASE OF BRINGING REPEATED ADVERTS, WE CALL drop_duplicates FUNCTION TO ELIMINATE THEM.
+
+df = pd.DataFrame(columns=['position_search', 'position', 'company', 'salary', 'web', 'web_sem_link', 'post_date', 'scrape_date'], data=lista)
+df = df[df['position'] != 'no data']
+df = df.drop_duplicates(subset=('position', 'company'))
+
+
+
+# THE LAST LINE OF THE SCRIP EXPORT THE DATAFRAME INTO AN EXCEL FILE.
+# BUT BEFORE WE WILL CHECK IF THE DIRECTORY EXIST; IF NOT, WE WILL CREATE IT
+if os.path.isdir('./data') == False:
+    mkdir('./data')
+else:
+    pass
+
+df.to_excel('data/' + str(datetime.date(datetime.now())) + ' Apply4u.xlsx')
