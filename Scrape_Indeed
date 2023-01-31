@@ -1,5 +1,5 @@
 # SEARCH FOR JOBS ON INDEED WEBPAGE #
-
+print('\n'+ '\033[1;34m' + '  RUNNING SCRIPT FOR SEARCH FOR JOBS ON INDEED WEBPAGE  '.center(100, '#')+'\n\n')
 
 # INDEED WEBPAGE USES CLAUDFARE, WHAT ENABLE SCRAPE WITHE REQUESTS LIBRARY.
 # SO IT'S NECESSARY TO USE SELENIUM WEBDRIVER.
@@ -15,118 +15,132 @@ from datetime import datetime   #used to register in dataset the date of the scr
 from time import sleep          #used to set a waiting time to prevent the target url from blocking our IP.
 from random import randint      #used to set a waiting time to prevent the target url from blocking our IP.
 import pandas as pd             #used to store the query in a dataframe and export it to Excel
+import os.path                  #used to check if there is the directory where we're going to store the files
+from os import mkdir            #used to create the directory where we're going to store the files
 
 
 
-# ALL THE INFORMATION WILL BE STORED IN A LIST, WHICH WILL ALLOW TO TRANSPORT TO A DATAFRAME
-
-lista = list()
-
-
-
-# THESE VARIABLES REFER TO THE JOB AND CITY YOU'RE LOOKING FOR.
+# THESE VARIABLE/LIST BELLOW REFER TO THE JOB AND CITY YOU'RE LOOKING FOR.
 # IF DESIRABLE YOU CAN CREATE A LINE ASKING QUE USER DO INSERT THE 'job' AND THE 'local'.
     # job = str(input('Please informe the job')
 # IT'S IMPORT TO MENTION THAT WE'RE USING INDEED FROM UK.
 # YOU CAN CHANGE IT BY CHANGE THE 'uk' FOR ANOTHER COUNTRY IN THE URL VARIABLES BELLOW.
+# IN THIS CODE, THE JOBS ARE IN A LIST BECAUSE WE WANT TO SEARCH SEVERAL JOBS AT ONCE.
+# IF THE JOB TITLE IS A COMPOUND NAME, YOU HAVE TO SEPARATE IT WITH + SIGNAL. EX.: 'business+analyst'
+# ALL THE INFORMATION WILL BE STORED IN A LIST, WHICH WILL ALLOW TO TRANSPORT TO A DATAFRAME
 
-job = 'assistant'
+lista = list()
+jobs = ['assistant', 'analyst', 'portuguese']
 local = 'London'
+for job in jobs:
+    print('\033[1;34m' + 'SEARCHING ADVERTS FOR POSITION: '+job.upper()+'\n')
 
 
 
-# THIS FIRST ITERATOR IS USED TO GO THROUGH ALL THE POSSIBLE PAGES SHOWN AFTER THE QUERY.
-# DESPITE THE RANGE IS TILL 20000, BELOW YOU'LL SEE THE CODE WILL STOP THE SCRIPT AFTER ITERATE THE LAST PAGE SHOWN.
+    # THIS SECOND ITERATOR IS USED TO GO THROUGH ALL THE POSSIBLE PAGES SHOWN AFTER THE QUERY.
+    # DESPITE THE RANGE IS TILL 20000, BELOW YOU'LL SEE THE CODE WILL STOP THE SCRIPT AFTER ITERATE THE LAST PAGE SHOWN.
 
-for count in range(0, 20000, 10):
-
-
-
-    # THE FORMAT OF URL OF THE FIRST 10 RESULTS IS DIFFERENT FROM THE REST.
-    # SO THIS CONDITIONAL ALLOWS TO INCLUDE THE 'count' VARIABLE ONLY FROM THE NEXT 20 RESULTS.
-    # THE PARAMETER '&fromage=1' IN THE URL MEANS THE QUERY BRINGS INFORMATION POSTED IN THE LAST 24HS.
-    # SO IT CAN BE DELETED.
-
-    if count == 0:
-        url = 'https://uk.indeed.com/jobs?q=' + job + '&l=' + local + '&fromage=1'
-    else:
-        url = 'https://uk.indeed.com/jobs?q=' + job + '&l=' + local + '&start=' + str(count) + '&fromage=1'
+    for count in range(0, 20000, 10):
 
 
 
-    # WE USE FIREFOX BROWSER. IN ORDER THE BROWSER NOT BE OPENED, WE SET THE OPTION '--headless'
-    # THE CONTENT IS INITIALLY STORED IN THE 'driver_content' VARIABLE.
-    # IT WAS NECESSARY DO EXCLUDE FROM IT THE '\\' STRING. FOR ANY REASON IT CAME IN THE URL CONTENT.
-    # AFTER THAT WE STORED IT INTERPRETED IN THE 'page' VARIABLE.
+        # THE FORMAT OF URL OF THE FIRST 10 RESULTS IS DIFFERENT FROM THE REST.
+        # SO THIS CONDITIONAL ALLOWS TO INCLUDE THE 'count' VARIABLE ONLY FROM THE NEXT 20 RESULTS.
+        # THE PARAMETER '&fromage=1' IN THE URL MEANS THE QUERY BRINGS INFORMATION POSTED IN THE LAST 24HS.
+        # SO IT CAN BE DELETED.
 
-    option = webdriver.FirefoxOptions()
-    option.add_argument('--headless')
-    driver = webdriver.Firefox(options=option)
-    driver.get(url)
-    driver_content = driver.page_source
-    driver_content.replace('\\', '')
-    driver.quit()
-    page = BeautifulSoup(driver_content, 'html.parser')
+        if count == 0:
+            url = 'https://uk.indeed.com/jobs?q=' + job + '&l=' + local + '&fromage=1'
+        else:
+            url = 'https://uk.indeed.com/jobs?q=' + job + '&l=' + local + '&start=' + str(count) + '&fromage=1'
 
 
 
-    # THIS SECOND ITERATOR WILL GET THE INFORMATION AVAILABLE IN THE PAGE.
-    # WE CREATED THE VARIABLE 'web' TO MAKE IT CLICKABLE IN EXCEL. THIS HAS THE WEBPAGE OF THE JOB.
+        # WE USE FIREFOX BROWSER. IN ORDER THE BROWSER NOT BE OPENED, WE SET THE OPTION '--headless'
+        # THE CONTENT IS INITIALLY STORED IN THE 'driver_content' VARIABLE.
+        # IT WAS NECESSARY DO EXCLUDE FROM IT THE '\\' STRING. FOR ANY REASON IT CAME IN THE URL CONTENT.
+        # AFTER THAT WE STORED IT INTERPRETED IN THE 'page' VARIABLE.
 
-    for item in page.find_all('div', class_='job_seen_beacon'):
-        try:
-            position = item.h2.a.text.strip()
-        except:
-            position = ''
-        try:
-            company = item.find('span', class_='companyName').text.strip()
-        except:
-            company = ''
-        try:
-            salary = item.find('div', class_='metadata salary-snippet-container').find('div', class_='attribute_snippet').text
-        except:
-            salary = ''
-        try:
-            webx = 'https://uk.indeed.com' + item.find('td', class_='resultContent').h2.a.get('href')
-            if len(webx) > 255:
+        option = webdriver.FirefoxOptions()
+        option.add_argument('--headless')
+        driver = webdriver.Firefox(options=option)
+        driver.get(url)
+        driver_content = driver.page_source
+        driver_content.replace('\\', '')
+        driver.quit()
+        page = BeautifulSoup(driver_content, 'html.parser')
+
+
+
+        # THIS THIRD ITERATOR WILL GET THE INFORMATION AVAILABLE IN THE PAGE.
+        # WE CREATED THE VARIABLE 'web' TO MAKE IT CLICKABLE IN EXCEL. THIS HAS THE WEBPAGE OF THE JOB.
+
+        for item in page.find_all('div', class_='job_seen_beacon'):
+            try:
+                position = item.h2.a.text.strip()
+            except:
+                position = ''
+            try:
+                company = item.find('span', class_='companyName').text.strip()
+            except:
+                company = ''
+            try:
+                salary = item.find('div', class_='metadata salary-snippet-container').find('div', class_='attribute_snippet').text.strip()
+            except:
+                salary = ''
+            try:
+                webx = 'https://uk.indeed.com' + item.find('td', class_='resultContent').h2.a.get('href').strip()
+                if len(webx) > 255:
+                    web = ''
+                else:
+                    web = '=HYPERLINK("' + webx + '")'
+            except:
+                webx = ''
                 web = ''
-            else:
-                web = '=HYPERLINK("' + webx + '")'
-        except:
-            webx = ''
-            web = ''
-        scrape_date = datetime.now()
+            try:
+                position_search = job
+            except:
+                position_search = 'no data'
+            scrape_date = datetime.now()
 
-        lista.append([position, company, salary, web, webx, scrape_date])
-
-
-
-    # THIS THIRD ITERATOR STOPS THE SCRIPT WHEN IT REACHES THE LAST PAGE.
-
-    next_page = 'no'
-    for x in range(0, 6):
-        try:
-            if page.find_all('div', class_='css-tvvxwd ecydgvn1')[x].a.get('aria-label') == 'Next Page':
-                next_page = 'yes'
-        except:
-            pass
-
-    if next_page == 'no':
-        break
+            lista.append([position_search, position, company, salary, web, webx, scrape_date])
 
 
 
-    # TO PREVENT INDEED TO BLOCK OUT IP, ONCE WE'RE SENDING SEVERAL REQUESTS TO ITS SERVER,
-    # WE SET A RANDOM WAITING TIME IN THE RANGE OF 2 TO 10 SECONDS.
+        # THIS FOURTH ITERATOR STOPS THE SCRIPT WHEN IT REACHES THE LAST PAGE.
 
-    sleep(randint(2, 10))
+        next_page = 'no'
+        for x in range(0, 6):
+            try:
+                if page.find_all('div', class_='css-tvvxwd ecydgvn1')[x].a.get('aria-label') == 'Next Page':
+                    next_page = 'yes'
+            except:
+                pass
+
+        if next_page == 'no':
+            break
+
+
+
+        # TO PREVENT INDEED TO BLOCK OUT IP, ONCE WE'RE SENDING SEVERAL REQUESTS TO ITS SERVER,
+        # WE SET A RANDOM WAITING TIME IN THE RANGE OF 2 TO 5 SECONDS.
+
+        sleep(randint(2, 5))
 
 
 
 # WE USE PANDAS TO TRANSFORM THE LIST INTO A DATAFRAME.
 # JUST IN CASE OF BRINGING REPEATED ADVERTS, WE CALL drop_duplicates FUNCTION TO ELIMINATE THEM.
-# THE LAST LINE OF THE SCRIP EXPORT THE DATAFRAME INTO AN EXCEL FILE.
 
-df = pd.DataFrame(columns=['Position', 'Company', 'Salary', 'Web', 'web_sem_link', 'Scrape_Date'], data=lista)
-df = df.drop_duplicates(subset=('Position', 'Company'))
-df.to_excel(str(datetime.date(datetime.now())) + ' Indeed - ' + job + '.xlsx')
+df = pd.DataFrame(columns=['position_search', 'position', 'company', 'salary', 'web', 'web_sem_link', 'scrape_date'], data=lista)
+df = df.drop_duplicates(subset=('position', 'company'))
+
+
+
+# THE LAST LINE OF THE SCRIP EXPORT THE DATAFRAME INTO AN EXCEL FILE.
+# BUT BEFORE WE WILL CHECK IF THE DIRECTORY EXIST; IF NOT, WE WILL CREATE IT
+if os.path.isdir('./data') == False:
+    mkdir('./data')
+else:
+    pass
+df.to_excel('data/' + str(datetime.date(datetime.now())) + ' Indeed.xlsx')
