@@ -17,7 +17,8 @@ content = str(requests.get(url).content)
 regular_expression_email = "([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)"
 
 # 'findall' is the method from 're' library used to creat a list os all strings that fit the declared regular expression
-re.findall(regular_expression_email, content)
+# 'set' function is used to remove repeated items. As it returns a 'set' object, we use the function 'list' to transform it in a list.
+list(set(re.findall(regular_expression_email, content)))
 
 # This is the outcome for the above code:
-['info@abbisscadres.com', 'info@abbisscadres.com', 'info@abbisscadres.com']
+['info@abbisscadres.com']
